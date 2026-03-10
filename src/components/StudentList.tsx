@@ -83,7 +83,15 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
           scale: 2,
           backgroundColor: '#ffffff',
           useCORS: true,
-          logging: false
+          allowTaint: true,
+          logging: false,
+          onclone: (clonedDoc) => {
+            const el = clonedDoc.getElementById('student-table-container');
+            if (el) {
+              el.style.overflow = 'visible';
+              el.style.height = 'auto';
+            }
+          }
         });
         const link = document.createElement('a');
         link.download = 'student-list.png';
@@ -91,6 +99,7 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
         link.click();
       } catch (err) {
         console.error('Failed to download image:', err);
+        alert('Failed to generate image. Please try printing instead.');
       }
     }
   };
@@ -182,7 +191,7 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" ref={tableRef}>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" ref={tableRef} id="student-table-container">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

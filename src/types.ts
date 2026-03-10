@@ -19,7 +19,6 @@ export interface Student {
   city: string;
   status: 'Confirm' | 'Pending' | 'Cancelled' | '';
   payments: string[]; // Flattened array of 40 values (10 payments * 4 fields)
-  received_ac: string;
   totalFees: string;
   discount: string;
   balanceDue: string;

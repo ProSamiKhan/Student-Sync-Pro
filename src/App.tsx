@@ -23,6 +23,7 @@ export default function App() {
   );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [missingVars, setMissingVars] = useState<string[]>([]);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -45,11 +46,15 @@ export default function App() {
   const checkAuth = async () => {
     try {
       const res = await fetch('/api/auth/status');
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}: ${res.statusText}`);
+      }
       const data = await res.json();
       setIsAuthenticated(data.isAuthenticated);
       if (data.missing) setMissingVars(data.missing);
-    } catch (err) {
+    } catch (err: any) {
       setIsAuthenticated(false);
+      setAuthError(err.message || 'Failed to connect to server');
     } finally {
       setIsLoading(false);
     }
@@ -93,12 +98,16 @@ export default function App() {
             <Lock className="w-8 h-8 text-red-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Configuration Missing</h1>
-          <p className="text-slate-500 mb-4">The following environment variables are missing or empty:</p>
-          <div className="bg-red-50 p-4 rounded-xl mb-8 text-left">
-            <ul className="list-disc list-inside text-red-600 text-xs font-mono space-y-1">
-              {missingVars.map(v => <li key={v}>{v}</li>)}
-            </ul>
-          </div>
+          <p className="text-slate-500 mb-4">
+            {authError ? `Error: ${authError}` : 'The following environment variables are missing or empty:'}
+          </p>
+          {missingVars.length > 0 && (
+            <div className="bg-red-50 p-4 rounded-xl mb-8 text-left">
+              <ul className="list-disc list-inside text-red-600 text-xs font-mono space-y-1">
+                {missingVars.map(v => <li key={v}>{v}</li>)}
+              </ul>
+            </div>
+          )}
           <p className="mt-6 text-xs text-slate-400">
             Please add these in your Vercel or AI Studio environment settings and restart the app.
           </p>

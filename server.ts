@@ -72,7 +72,7 @@ app.get("/api/students", async (req, res) => {
     const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Sheet1!A2:AZ",
+      range: "Sheet1!A2:BZ",
     });
 
     const rows = response.data.values || [];
@@ -89,11 +89,10 @@ app.get("/api/students", async (req, res) => {
       city: row[8] || '',
       state: row[9] || '',
       payments: row.slice(10, 50), // 10 payments * 4 fields = 40 fields
-      received_ac: row[50] || '',
-      totalFees: row[51] || '0',
-      discount: row[52] || '0',
-      balanceDue: row[53] || '0',
-      status: row[54] || 'Confirm',
+      totalFees: row[50] || '0',
+      discount: row[51] || '0',
+      balanceDue: row[52] || '0',
+      status: row[53] || 'Confirm',
     }));
 
     res.json(students);
@@ -117,7 +116,6 @@ app.post("/api/students", async (req, res) => {
     student.city,
     student.state,
     ...student.payments, // Array of 40 values
-    student.received_ac,
     student.totalFees,
     student.discount,
     student.balanceDue,
@@ -165,7 +163,7 @@ app.put("/api/students/:row", async (req, res) => {
     const sheets = getSheetsClient();
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `Sheet1!A${rowNum}:AZ${rowNum}`,
+      range: `Sheet1!A${rowNum}:BZ${rowNum}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [row] },
     });

@@ -37,7 +37,6 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
     city: '',
     status: 'Confirm',
     payments: Array(40).fill(''), // 10 payments * 4 fields (Amount, Date, Ref, Method)
-    received_ac: '',
     totalFees: '20000',
     discount: '0',
     balanceDue: '20000',
@@ -246,7 +245,7 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                     {CITIES.map(c => <option key={c} value={c} />)}
                   </datalist>
                 </InputGroup>
-                <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
                   <InputGroup label="Registration Status">
                     <select 
                       className="form-select"
@@ -257,15 +256,6 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                       <option value="Pending">Pending</option>
                       <option value="Cancelled">Cancelled</option>
                     </select>
-                  </InputGroup>
-                  <InputGroup label="Received By (Account)">
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      placeholder="Name / Account" 
-                      value={formData.received_ac}
-                      onChange={e => setFormData({ ...formData, received_ac: e.target.value })}
-                    />
                   </InputGroup>
                 </div>
               </div>

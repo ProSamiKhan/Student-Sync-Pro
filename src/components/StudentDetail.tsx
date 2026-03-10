@@ -20,14 +20,24 @@ export default function StudentDetail({ student, onClose }: StudentDetailProps) 
   const handleDownloadImage = async () => {
     if (contentRef.current) {
       try {
+        // Temporarily set overflow to visible to capture full content
+        const originalStyle = contentRef.current.style.overflow;
+        contentRef.current.style.overflow = 'visible';
+        
         const canvas = await html2canvas(contentRef.current, {
-          scale: 3,
+          scale: 2,
           backgroundColor: '#ffffff',
           useCORS: true,
+          allowTaint: true,
           logging: false,
-          windowWidth: contentRef.current.scrollWidth,
-          windowHeight: contentRef.current.scrollHeight
+          onclone: (clonedDoc) => {
+            const el = clonedDoc.getElementById('printable-content');
+            if (el) el.style.overflow = 'visible';
+          }
         });
+        
+        contentRef.current.style.overflow = originalStyle;
+        
         const link = document.createElement('a');
         link.download = `Student_${student.admissionId}.png`;
         link.href = canvas.toDataURL('image/png', 1.0);
@@ -68,7 +78,7 @@ export default function StudentDetail({ student, onClose }: StudentDetailProps) 
         </div>
 
         {/* Printable Content */}
-        <div className="flex-1 overflow-y-auto p-8" ref={contentRef}>
+        <div className="flex-1 overflow-y-auto p-8" ref={contentRef} id="printable-content">
           <div className="max-w-3xl mx-auto space-y-10">
             {/* Profile Header */}
             <div className="flex flex-col md:flex-row items-center gap-8 border-b border-slate-100 pb-10">
@@ -103,7 +113,6 @@ export default function StudentDetail({ student, onClose }: StudentDetailProps) 
                   <DetailItem label="Contact Number" value={student.contactNo} />
                   <DetailItem label="WhatsApp Number" value={student.whatsappNo} />
                   <DetailItem label="Country" value={student.country} />
-                  <DetailItem label="Received By (Account)" value={student.received_ac} />
                 </div>
               </div>
 
