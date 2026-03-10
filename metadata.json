@@ -1,0 +1,5 @@
+{
+  "name": "Student Sync Pro",
+  "description": "A comprehensive student management system with real-time Google Sheets synchronization, advanced analytics, and automated payment tracking.",
+  "requestFramePermissions": []
+}
