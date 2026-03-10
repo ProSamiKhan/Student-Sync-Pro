@@ -12,11 +12,15 @@ import {
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import StudentForm from './components/StudentForm';
+import Login from './components/Login';
 import { Student } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(
+    localStorage.getItem('isLoggedIn') === 'true'
+  );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -24,14 +28,18 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    if (isAdminAuthenticated) {
+      checkAuth();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isAdminAuthenticated]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isAdminAuthenticated) {
       fetchStudents();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAdminAuthenticated]);
 
   const checkAuth = async () => {
     try {
@@ -74,7 +82,13 @@ export default function App() {
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setIsAuthenticated(false);
+    setIsAdminAuthenticated(false);
+    localStorage.removeItem('isLoggedIn');
   };
+
+  if (!isAdminAuthenticated) {
+    return <Login onLogin={() => setIsAdminAuthenticated(true)} />;
+  }
 
   if (isLoading) {
     return (
