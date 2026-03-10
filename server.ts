@@ -35,9 +35,18 @@ app.use(
 // Google OAuth Setup
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = `${process.env.APP_URL}/auth/callback`;
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
+// Robust Redirect URI construction
+const getRedirectUri = () => {
+  let baseUrl = process.env.APP_URL || '';
+  if (baseUrl.endsWith('/')) {
+    baseUrl = baseUrl.slice(0, -1);
+  }
+  return `${baseUrl}/auth/callback`;
+};
+
+const REDIRECT_URI = getRedirectUri();
 const oauth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 
 // Auth Routes
@@ -47,10 +56,10 @@ app.get("/api/auth/url", (req, res) => {
     scope: ["https://www.googleapis.com/auth/spreadsheets"],
     prompt: "consent",
   });
-  res.json({ url });
+  res.json({ url, redirectUri: REDIRECT_URI });
 });
 
-app.get("/auth/callback", async (req, res) => {
+app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
   const { code } = req.query;
   try {
     const { tokens } = await oauth2Client.getToken(code as string);
