@@ -19,18 +19,29 @@ export default function StudentDetail({ student, onClose }: StudentDetailProps) 
 
   const handleDownloadImage = async () => {
     if (contentRef.current) {
-      const canvas = await html2canvas(contentRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff'
-      });
-      const link = document.createElement('a');
-      link.download = `Student_${student.admissionId}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      try {
+        const canvas = await html2canvas(contentRef.current, {
+          scale: 3,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          logging: false,
+          windowWidth: contentRef.current.scrollWidth,
+          windowHeight: contentRef.current.scrollHeight
+        });
+        const link = document.createElement('a');
+        link.download = `Student_${student.admissionId}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+      } catch (err) {
+        console.error('Failed to download image:', err);
+        alert('Failed to generate image. Please try printing instead.');
+      }
     }
   };
 
-  const paidAmount = parseFloat(student.totalFees) - parseFloat(student.discount) - parseFloat(student.balanceDue);
+  const paidAmount = [...Array(10)].reduce((sum, _, i) => {
+    return sum + (parseFloat(student.payments[i * 4]) || 0);
+  }, 0);
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -92,6 +103,7 @@ export default function StudentDetail({ student, onClose }: StudentDetailProps) 
                   <DetailItem label="Contact Number" value={student.contactNo} />
                   <DetailItem label="WhatsApp Number" value={student.whatsappNo} />
                   <DetailItem label="Country" value={student.country} />
+                  <DetailItem label="Received By (Account)" value={student.received_ac} />
                 </div>
               </div>
 
@@ -134,14 +146,23 @@ export default function StudentDetail({ student, onClose }: StudentDetailProps) 
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {[...Array(10)].map((_, i) => {
-                      const amount = student.payments[i * 3];
+                      const amount = student.payments[i * 4];
+                      const date = student.payments[i * 4 + 1];
+                      const ref = student.payments[i * 4 + 2];
+                      const method = student.payments[i * 4 + 3];
+                      
                       if (!amount) return null;
                       return (
                         <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 text-sm font-medium text-slate-900">Payment {i + 1}</td>
                           <td className="px-6 py-4 text-sm font-bold text-indigo-600">₹{parseFloat(amount).toLocaleString()}</td>
-                          <td className="px-6 py-4 text-sm text-slate-500">{student.payments[i * 3 + 1]}</td>
-                          <td className="px-6 py-4 text-sm text-slate-500 font-mono">{student.payments[i * 3 + 2]}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500">{date}</td>
+                          <td className="px-6 py-4 text-sm text-slate-500">
+                            <div className="flex flex-col">
+                              <span className="font-mono">{ref}</span>
+                              <span className="text-[10px] uppercase font-bold text-slate-400">{method}</span>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}

@@ -78,11 +78,20 @@ export default function StudentList({ students, onEdit, onDelete }: StudentListP
 
   const handleDownloadImage = async () => {
     if (tableRef.current) {
-      const canvas = await html2canvas(tableRef.current);
-      const link = document.createElement('a');
-      link.download = 'student-list.png';
-      link.href = canvas.toDataURL();
-      link.click();
+      try {
+        const canvas = await html2canvas(tableRef.current, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          logging: false
+        });
+        const link = document.createElement('a');
+        link.download = 'student-list.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (err) {
+        console.error('Failed to download image:', err);
+      }
     }
   };
 

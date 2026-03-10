@@ -22,6 +22,7 @@ export default function App() {
     localStorage.getItem('isLoggedIn') === 'true'
   );
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [missingVars, setMissingVars] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -46,6 +47,7 @@ export default function App() {
       const res = await fetch('/api/auth/status');
       const data = await res.json();
       setIsAuthenticated(data.isAuthenticated);
+      if (data.missing) setMissingVars(data.missing);
     } catch (err) {
       setIsAuthenticated(false);
     } finally {
@@ -91,9 +93,14 @@ export default function App() {
             <Lock className="w-8 h-8 text-red-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Configuration Missing</h1>
-          <p className="text-slate-500 mb-8">Please set up GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_KEY in your environment variables.</p>
+          <p className="text-slate-500 mb-4">The following environment variables are missing or empty:</p>
+          <div className="bg-red-50 p-4 rounded-xl mb-8 text-left">
+            <ul className="list-disc list-inside text-red-600 text-xs font-mono space-y-1">
+              {missingVars.map(v => <li key={v}>{v}</li>)}
+            </ul>
+          </div>
           <p className="mt-6 text-xs text-slate-400">
-            Check the setup instructions for details.
+            Please add these in your Vercel or AI Studio environment settings and restart the app.
           </p>
         </div>
       </div>

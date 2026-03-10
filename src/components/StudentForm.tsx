@@ -36,7 +36,8 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
     state: '',
     city: '',
     status: 'Confirm',
-    payments: Array(30).fill(''), // 10 payments * 3 fields
+    payments: Array(40).fill(''), // 10 payments * 4 fields (Amount, Date, Ref, Method)
+    received_ac: '',
     totalFees: '20000',
     discount: '0',
     balanceDue: '20000',
@@ -56,16 +57,31 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
     const disc = parseFloat(formData.discount) || 0;
     let paid = 0;
     for (let i = 0; i < 10; i++) {
-      paid += parseFloat(formData.payments[i * 3]) || 0;
+      paid += parseFloat(formData.payments[i * 4]) || 0;
     }
     const balance = total - disc - paid;
     setFormData(prev => ({ ...prev, balanceDue: balance.toString() }));
   }, [formData.totalFees, formData.discount, formData.payments]);
 
-  const handlePaymentChange = (index: number, field: 0 | 1 | 2, value: string) => {
+  const handlePaymentChange = (index: number, field: 0 | 1 | 2 | 3, value: string) => {
     const newPayments = [...formData.payments];
-    newPayments[index * 3 + field] = value;
+    newPayments[index * 4 + field] = value;
+    
+    // If method changes, clear the reference field
+    if (field === 3) {
+      newPayments[index * 4 + 2] = '';
+    }
+    
     setFormData({ ...formData, payments: newPayments });
+  };
+
+  const handlePhoneChange = (field: 'contactNo' | 'whatsappNo', value: string) => {
+    if (formData.country === 'India (+91)') {
+      const cleaned = value.replace(/\D/g, '').slice(0, 10);
+      setFormData({ ...formData, [field]: cleaned });
+    } else {
+      setFormData({ ...formData, [field]: value });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,7 +179,16 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                   <select 
                     className="form-select"
                     value={formData.country}
-                    onChange={e => setFormData({ ...formData, country: e.target.value })}
+                    onChange={e => {
+                      const newCountry = e.target.value;
+                      let contact = formData.contactNo;
+                      let whatsapp = formData.whatsappNo;
+                      if (newCountry === 'India (+91)') {
+                        contact = contact.replace(/\D/g, '').slice(0, 10);
+                        whatsapp = whatsapp.replace(/\D/g, '').slice(0, 10);
+                      }
+                      setFormData({ ...formData, country: newCountry, contactNo: contact, whatsappNo: whatsapp });
+                    }}
                   >
                     <option value="India (+91)">India (+91)</option>
                     <option value="Other">Other</option>
@@ -185,18 +210,18 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                   <input 
                     type="text" 
                     className="form-input" 
-                    placeholder="+91" 
+                    placeholder={formData.country === 'India (+91)' ? "10 Digits" : "Contact No"} 
                     value={formData.contactNo}
-                    onChange={e => setFormData({ ...formData, contactNo: e.target.value })}
+                    onChange={e => handlePhoneChange('contactNo', e.target.value)}
                   />
                 </InputGroup>
                 <InputGroup label="WhatsApp No">
                   <input 
                     type="text" 
                     className="form-input" 
-                    placeholder="+91" 
+                    placeholder={formData.country === 'India (+91)' ? "10 Digits" : "WhatsApp No"} 
                     value={formData.whatsappNo}
-                    onChange={e => setFormData({ ...formData, whatsappNo: e.target.value })}
+                    onChange={e => handlePhoneChange('whatsappNo', e.target.value)}
                   />
                 </InputGroup>
                 <InputGroup label="State / UT">
@@ -210,16 +235,18 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                   </select>
                 </InputGroup>
                 <InputGroup label="City">
-                  <select 
-                    className="form-select"
+                  <input 
+                    list="city-list"
+                    className="form-input"
+                    placeholder="Select or Type City"
                     value={formData.city}
                     onChange={e => setFormData({ ...formData, city: e.target.value })}
-                  >
-                    <option value="">Select City</option>
-                    {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  />
+                  <datalist id="city-list">
+                    {CITIES.map(c => <option key={c} value={c} />)}
+                  </datalist>
                 </InputGroup>
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 grid grid-cols-2 gap-4">
                   <InputGroup label="Registration Status">
                     <select 
                       className="form-select"
@@ -230,6 +257,15 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                       <option value="Pending">Pending</option>
                       <option value="Cancelled">Cancelled</option>
                     </select>
+                  </InputGroup>
+                  <InputGroup label="Received By (Account)">
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Name / Account" 
+                      value={formData.received_ac}
+                      onChange={e => setFormData({ ...formData, received_ac: e.target.value })}
+                    />
                   </InputGroup>
                 </div>
               </div>
@@ -247,8 +283,28 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                         Payment {i + 1} {i === 0 && '(Initial)'}
                       </span>
                       <div className="flex bg-white rounded-lg p-1 border border-slate-200">
-                        <button type="button" className="px-2 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded-md">ACCOUNT</button>
-                        <button type="button" className="px-2 py-0.5 text-[10px] font-bold text-slate-400">CASH</button>
+                        <button 
+                          type="button" 
+                          onClick={() => handlePaymentChange(i, 3, 'Account')}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                            formData.payments[i * 4 + 3] === 'Account' 
+                              ? 'bg-indigo-600 text-white' 
+                              : 'text-slate-400 hover:bg-slate-50'
+                          }`}
+                        >
+                          ACCOUNT
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => handlePaymentChange(i, 3, 'Cash')}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                            formData.payments[i * 4 + 3] === 'Cash' 
+                              ? 'bg-indigo-600 text-white' 
+                              : 'text-slate-400 hover:bg-slate-50'
+                          }`}
+                        >
+                          CASH
+                        </button>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -257,7 +313,7 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                           type="number" 
                           placeholder="Amount" 
                           className="payment-input pl-3" 
-                          value={formData.payments[i * 3]}
+                          value={formData.payments[i * 4]}
                           onChange={e => handlePaymentChange(i, 0, e.target.value)}
                         />
                       </div>
@@ -265,18 +321,32 @@ export default function StudentForm({ student, onClose, onSuccess }: StudentForm
                         <input 
                           type="date" 
                           className="payment-input" 
-                          value={formData.payments[i * 3 + 1]}
+                          value={formData.payments[i * 4 + 1]}
                           onChange={e => handlePaymentChange(i, 1, e.target.value)}
                         />
                       </div>
                     </div>
-                    <input 
-                      type="text" 
-                      placeholder={i === 0 ? "Received By (Name)" : "UTR (Alphanumeric)"} 
-                      className="payment-input w-full" 
-                      value={formData.payments[i * 3 + 2]}
-                      onChange={e => handlePaymentChange(i, 2, e.target.value)}
-                    />
+                    {formData.payments[i * 4 + 3] === 'Account' && (
+                      <input 
+                        type="text" 
+                        placeholder="UTR Number (Alphanumeric)" 
+                        className="payment-input w-full border-indigo-200 bg-indigo-50/30" 
+                        value={formData.payments[i * 4 + 2]}
+                        onChange={e => handlePaymentChange(i, 2, e.target.value)}
+                      />
+                    )}
+                    {formData.payments[i * 4 + 3] === 'Cash' && (
+                      <input 
+                        type="text" 
+                        placeholder="Received By (Name)" 
+                        className="payment-input w-full border-emerald-200 bg-emerald-50/30" 
+                        value={formData.payments[i * 4 + 2]}
+                        onChange={e => handlePaymentChange(i, 2, e.target.value)}
+                      />
+                    )}
+                    {!formData.payments[i * 4 + 3] && (
+                      <p className="text-[10px] text-slate-400 italic text-center py-1">Select payment method above</p>
+                    )}
                   </div>
                 ))}
               </div>

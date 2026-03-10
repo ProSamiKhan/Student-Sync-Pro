@@ -55,9 +55,15 @@ const getSheetsClient = () => {
 
 // Auth Routes (Simplified for Admin Login)
 app.get("/api/auth/status", (req, res) => {
-  // If service account is configured, we consider the "Google connection" part done
-  const isConfigured = !!(SERVICE_ACCOUNT_EMAIL && SERVICE_ACCOUNT_KEY && SHEET_ID);
-  res.json({ isAuthenticated: isConfigured });
+  const missing = [];
+  if (!SERVICE_ACCOUNT_EMAIL) missing.push("GOOGLE_SERVICE_ACCOUNT_EMAIL");
+  if (!SERVICE_ACCOUNT_KEY) missing.push("GOOGLE_SERVICE_ACCOUNT_KEY");
+  if (!SHEET_ID) missing.push("GOOGLE_SHEET_ID");
+  
+  res.json({ 
+    isAuthenticated: missing.length === 0,
+    missing: missing
+  });
 });
 
 // Student API Routes
@@ -70,25 +76,24 @@ app.get("/api/students", async (req, res) => {
     });
 
     const rows = response.data.values || [];
-    // Map rows to objects based on your column structure
     const students = rows.map((row, index) => ({
-      id: index + 2, // Row number for easy updates
-      admissionId: row[0],
-      fullName: row[1],
-      qualification: row[2],
-      gender: row[3],
-      age: row[4],
-      country: row[5],
-      medium: row[6],
-      contactNo: row[7],
-      whatsappNo: row[8],
-      state: row[9],
-      city: row[10],
-      status: row[11],
-      payments: row.slice(12, 42), // 10 payments * 3 fields = 30 fields
-      totalFees: row[42],
-      discount: row[43],
-      balanceDue: row[44],
+      id: index + 2,
+      admissionId: row[0] || '',
+      fullName: row[1] || '',
+      gender: row[2] || '',
+      age: row[3] || '',
+      qualification: row[4] || '',
+      medium: row[5] || '',
+      contactNo: row[6] || '',
+      whatsappNo: row[7] || '',
+      city: row[8] || '',
+      state: row[9] || '',
+      payments: row.slice(10, 50), // 10 payments * 4 fields = 40 fields
+      received_ac: row[50] || '',
+      totalFees: row[51] || '0',
+      discount: row[52] || '0',
+      balanceDue: row[53] || '0',
+      status: row[54] || 'Confirm',
     }));
 
     res.json(students);
@@ -103,20 +108,20 @@ app.post("/api/students", async (req, res) => {
   const row = [
     student.admissionId,
     student.fullName,
-    student.qualification,
     student.gender,
     student.age,
-    student.country,
+    student.qualification,
     student.medium,
     student.contactNo,
     student.whatsappNo,
-    student.state,
     student.city,
-    student.status,
-    ...student.payments,
+    student.state,
+    ...student.payments, // Array of 40 values
+    student.received_ac,
     student.totalFees,
     student.discount,
     student.balanceDue,
+    student.status,
   ];
 
   try {
@@ -140,20 +145,20 @@ app.put("/api/students/:row", async (req, res) => {
   const row = [
     student.admissionId,
     student.fullName,
-    student.qualification,
     student.gender,
     student.age,
-    student.country,
+    student.qualification,
     student.medium,
     student.contactNo,
     student.whatsappNo,
-    student.state,
     student.city,
-    student.status,
+    student.state,
     ...student.payments,
+    student.received_ac,
     student.totalFees,
     student.discount,
     student.balanceDue,
+    student.status,
   ];
 
   try {
