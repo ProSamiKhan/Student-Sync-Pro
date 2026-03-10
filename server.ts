@@ -32,89 +32,41 @@ app.use(
   })
 );
 
-// Google OAuth Setup
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+// Google Auth Setup
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
-// Robust Redirect URI construction
-const getRedirectUri = () => {
-  let baseUrl = process.env.APP_URL || '';
-  if (baseUrl.endsWith('/')) {
-    baseUrl = baseUrl.slice(0, -1);
+// Service Account Credentials
+const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+const SERVICE_ACCOUNT_KEY = process.env.GOOGLE_SERVICE_ACCOUNT_KEY?.replace(/\\n/g, '\n');
+
+const getSheetsClient = () => {
+  if (!SERVICE_ACCOUNT_EMAIL || !SERVICE_ACCOUNT_KEY) {
+    throw new Error("Service Account credentials missing");
   }
-  return `${baseUrl}/auth/callback`;
+
+  const auth = new google.auth.JWT({
+    email: SERVICE_ACCOUNT_EMAIL,
+    key: SERVICE_ACCOUNT_KEY,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+
+  return google.sheets({ version: "v4", auth });
 };
 
-const REDIRECT_URI = getRedirectUri();
-const oauth2Client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
-
-// Auth Routes
-app.get("/api/auth/url", (req, res) => {
-  const url = oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    scope: ["https://www.googleapis.com/auth/spreadsheets"],
-    prompt: "consent",
-  });
-  res.json({ url, redirectUri: REDIRECT_URI });
-});
-
-app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
-  const { code } = req.query;
-  try {
-    const { tokens } = await oauth2Client.getToken(code as string);
-    // Store tokens in session or cookie
-    (req.session as any).tokens = tokens;
-    
-    res.send(`
-      <html>
-        <body>
-          <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
-              window.close();
-            } else {
-              window.location.href = '/';
-            }
-          </script>
-          <p>Authentication successful. This window should close automatically.</p>
-        </body>
-      </html>
-    `);
-  } catch (error) {
-    console.error("Error getting tokens:", error);
-    res.status(500).send("Authentication failed");
-  }
-});
-
+// Auth Routes (Simplified for Admin Login)
 app.get("/api/auth/status", (req, res) => {
-  const tokens = (req.session as any).tokens;
-  res.json({ isAuthenticated: !!tokens });
+  // If service account is configured, we consider the "Google connection" part done
+  const isConfigured = !!(SERVICE_ACCOUNT_EMAIL && SERVICE_ACCOUNT_KEY && SHEET_ID);
+  res.json({ isAuthenticated: isConfigured });
 });
-
-app.post("/api/auth/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.json({ success: true });
-  });
-});
-
-// Helper to get Sheets API client
-const getSheetsClient = (tokens: any) => {
-  const client = new OAuth2Client(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
-  client.setCredentials(tokens);
-  return google.sheets({ version: "v4", auth: client });
-};
 
 // Student API Routes
 app.get("/api/students", async (req, res) => {
-  const tokens = (req.session as any).tokens;
-  if (!tokens) return res.status(401).json({ error: "Unauthorized" });
-
   try {
-    const sheets = getSheetsClient(tokens);
+    const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: "Sheet1!A2:AZ", // Adjust range as needed
+      range: "Sheet1!A2:AZ",
     });
 
     const rows = response.data.values || [];
@@ -147,9 +99,6 @@ app.get("/api/students", async (req, res) => {
 });
 
 app.post("/api/students", async (req, res) => {
-  const tokens = (req.session as any).tokens;
-  if (!tokens) return res.status(401).json({ error: "Unauthorized" });
-
   const student = req.body;
   const row = [
     student.admissionId,
@@ -164,14 +113,14 @@ app.post("/api/students", async (req, res) => {
     student.state,
     student.city,
     student.status,
-    ...student.payments, // Array of 30 values
+    ...student.payments,
     student.totalFees,
     student.discount,
     student.balanceDue,
   ];
 
   try {
-    const sheets = getSheetsClient(tokens);
+    const sheets = getSheetsClient();
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: "Sheet1!A2",
@@ -186,9 +135,6 @@ app.post("/api/students", async (req, res) => {
 });
 
 app.put("/api/students/:row", async (req, res) => {
-  const tokens = (req.session as any).tokens;
-  if (!tokens) return res.status(401).json({ error: "Unauthorized" });
-
   const rowNum = req.params.row;
   const student = req.body;
   const row = [
@@ -211,7 +157,7 @@ app.put("/api/students/:row", async (req, res) => {
   ];
 
   try {
-    const sheets = getSheetsClient(tokens);
+    const sheets = getSheetsClient();
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `Sheet1!A${rowNum}:AZ${rowNum}`,
@@ -226,15 +172,10 @@ app.put("/api/students/:row", async (req, res) => {
 });
 
 app.delete("/api/students/:row", async (req, res) => {
-  const tokens = (req.session as any).tokens;
-  if (!tokens) return res.status(401).json({ error: "Unauthorized" });
-
   const rowNum = parseInt(req.params.row);
 
   try {
-    const sheets = getSheetsClient(tokens);
-    // Deleting a row in Sheets API is more complex (requires batchUpdate)
-    // For simplicity, we can just clear the row or use batchUpdate
+    const sheets = getSheetsClient();
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SHEET_ID,
       requestBody: {
@@ -242,7 +183,7 @@ app.delete("/api/students/:row", async (req, res) => {
           {
             deleteDimension: {
               range: {
-                sheetId: 0, // Assuming first sheet
+                sheetId: 0,
                 dimension: "ROWS",
                 startIndex: rowNum - 1,
                 endIndex: rowNum,

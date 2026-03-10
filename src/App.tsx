@@ -65,23 +65,7 @@ export default function App() {
     }
   };
 
-  const handleLogin = async () => {
-    const res = await fetch('/api/auth/url');
-    const { url } = await res.json();
-    const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
-    
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
-        setIsAuthenticated(true);
-        window.removeEventListener('message', handleMessage);
-      }
-    };
-    window.addEventListener('message', handleMessage);
-  };
-
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setIsAuthenticated(false);
     setIsAdminAuthenticated(false);
     localStorage.removeItem('isLoggedIn');
   };
@@ -98,23 +82,18 @@ export default function App() {
     );
   }
 
+  // If not configured (missing service account env vars), show a helpful message
   if (isAuthenticated === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-8 h-8 text-indigo-600" />
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-8 h-8 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Student Sync Pro</h1>
-          <p className="text-slate-500 mb-8">Please connect your Google account to access the student management system.</p>
-          <button
-            onClick={handleLogin}
-            className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-200"
-          >
-            Connect Google Sheets
-          </button>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Configuration Missing</h1>
+          <p className="text-slate-500 mb-8">Please set up GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_KEY in your environment variables.</p>
           <p className="mt-6 text-xs text-slate-400">
-            Requires Google Sheets API permissions.
+            Check the setup instructions for details.
           </p>
         </div>
       </div>
